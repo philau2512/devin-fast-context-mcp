@@ -1,7 +1,7 @@
 {
   "name": "fast-context-mcp",
-  "version": "1.5.2",
-  "description": "AI-driven semantic code search MCP server (Node.js)",
+  "version": "1.5.3",
+  "description": "AI-driven semantic code search MCP server (Node.js) — Windsurf/Devin protocol",
   "type": "module",
   "main": "src/server.mjs",
   "bin": {
@@ -21,6 +21,27 @@
   "engines": {
     "node": ">=18"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/philau2512/fast-context-mcp.git"
+  },
+  "homepage": "https://github.com/philau2512/fast-context-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/philau2512/fast-context-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "code-search",
+    "semantic-search",
+    "windsurf",
+    "devin",
+    "devstral",
+    "ripgrep",
+    "claude",
+    "cursor",
+    "ai"
+  ],
+  "author": "philau2512",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@vscode/ripgrep": "^1.15.9",

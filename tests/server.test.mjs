@@ -7,7 +7,9 @@ import { join, resolve } from "node:path";
 import pkg from "../package.json" with { type: "json" };
 import {
   SERVER_VERSION,
+  buildExtractWindsurfKeyTool,
   buildFastContextSearchTool,
+  createServer,
   isDirectRun,
   readRuntimeConfig,
 } from "../src/server.mjs";
@@ -27,7 +29,66 @@ describe("server metadata", () => {
   });
 
   it("has a local development bin link for npx self-resolution", () => {
-    assert.equal(existsSync(resolve("node_modules/.bin/fast-context-mcp")), true);
+    // postinstall creates this; tolerate missing link on some Windows setups
+    const binPath = resolve("node_modules/.bin/fast-context-mcp");
+    const binCmd = resolve("node_modules/.bin/fast-context-mcp.cmd");
+    assert.equal(existsSync(binPath) || existsSync(binCmd), true);
+  });
+});
+
+describe("runtime config hide extract tool", () => {
+  it("defaults hideExtractWindsurfKeyTool to false", () => {
+    assert.equal(readRuntimeConfig({}).hideExtractWindsurfKeyTool, false);
+  });
+
+  it("parses FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL", () => {
+    assert.equal(
+      readRuntimeConfig({ FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL: "1" }).hideExtractWindsurfKeyTool,
+      true,
+    );
+    assert.equal(
+      readRuntimeConfig({ FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL: "false" }).hideExtractWindsurfKeyTool,
+      false,
+    );
+  });
+
+  it("registers extract_windsurf_key by default", () => {
+    const server = createServer({ config: readRuntimeConfig({}) });
+    assert.ok(server._registeredTools.extract_windsurf_key);
+    assert.ok(server._registeredTools.fast_context_search);
+  });
+
+  it("omits extract_windsurf_key when hide flag is set", () => {
+    const server = createServer({
+      config: {
+        ...readRuntimeConfig({}),
+        hideExtractWindsurfKeyTool: true,
+      },
+    });
+    assert.equal(server._registeredTools.extract_windsurf_key, undefined);
+    assert.ok(server._registeredTools.fast_context_search);
+  });
+});
+
+describe("extract_windsurf_key tool", () => {
+  it("includes tried_paths on extraction failure", async () => {
+    const tool = buildExtractWindsurfKeyTool({
+      deps: {
+        extractKeyInfo: async () => ({
+          error: "not found",
+          hint: "login first",
+          db_path: "/tmp/a",
+          tried_paths: ["/tmp/a", "/tmp/b"],
+        }),
+      },
+    });
+
+    const response = await tool.handler();
+    const text = response.content[0].text;
+    assert.match(text, /Error: not found/);
+    assert.match(text, /Tried paths:/);
+    assert.match(text, /\/tmp\/a/);
+    assert.match(text, /\/tmp\/b/);
   });
 });
 

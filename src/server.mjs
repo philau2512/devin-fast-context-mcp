@@ -9,6 +9,7 @@
  *   FC_MAX_TURNS         — Search rounds per query (default: 3)
  *   FC_MAX_COMMANDS      — Max parallel commands per round (default: 8)
  *   FC_TIMEOUT_MS        — Connect-Timeout-Ms for streaming requests (default: 30000)
+ *   FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL — Hide extract_windsurf_key from MCP tools (default: false)
  *
  * Start:
  *   node src/server.mjs
@@ -75,6 +76,11 @@ export function readRuntimeConfig(env = process.env) {
     bootstrapMaxCommands: readIntEnv("FC_BOOTSTRAP_MAX_COMMANDS", 6, { min: 1, max: 8 }, env),
     includeSnippets: readBoolEnv("FC_INCLUDE_SNIPPETS", false, env),
     includeSnippetsExplicitlySet: env.FC_INCLUDE_SNIPPETS != null,
+    hideExtractWindsurfKeyTool: readBoolEnv(
+      "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL",
+      false,
+      env,
+    ),
   };
 }
 
@@ -227,24 +233,31 @@ export function buildExtractWindsurfKeyTool({ deps = {} } = {}) {
   return {
     name: "extract_windsurf_key",
     description:
-      "Extract Windsurf API Key from local installation. " +
+      "Extract Windsurf / Devin API Key from local installation. " +
       "Auto-detects OS (macOS/Windows/Linux) and reads the API key from " +
-      "Windsurf's local database. Set the result as WINDSURF_API_KEY env var.",
+      "Devin CLI credentials.toml (Linux/WSL) or Windsurf/Devin local SQLite. " +
+      "Set the result as WINDSURF_API_KEY env var.",
     schema: {},
     handler: async () => {
       const result = await getExtractKeyInfo();
 
       if (result.error) {
-        const text = `Error: ${result.error}\n${result.hint || ""}\nDB path: ${result.db_path || "N/A"}`;
+        const tried = Array.isArray(result.tried_paths) && result.tried_paths.length
+          ? `\nTried paths:\n${result.tried_paths.map((path) => `  - ${path}`).join("\n")}`
+          : "";
+        const text =
+          `Error: ${result.error}\n${result.hint || ""}\n` +
+          `Source path: ${result.db_path || "N/A"}${tried}`;
         return { content: [{ type: "text", text }] };
       }
 
       const key = result.api_key;
+      const sourceType = result.source_type ? `\n  Type: ${result.source_type}` : "";
       const text =
         `Windsurf API Key extracted successfully\n\n` +
         `  Key: ${key.slice(0, 30)}...${key.slice(-10)}\n` +
         `  Length: ${key.length}\n` +
-        `  Source: ${result.db_path}\n\n` +
+        `  Source: ${result.db_path}${sourceType}\n\n` +
         `Usage:\n` +
         `  export WINDSURF_API_KEY="${key}"`;
 
@@ -274,13 +287,15 @@ export function createServer({
     fastContextTool.handler,
   );
 
-  const extractKeyTool = buildExtractWindsurfKeyTool({ deps });
-  server.tool(
-    extractKeyTool.name,
-    extractKeyTool.description,
-    extractKeyTool.schema,
-    extractKeyTool.handler,
-  );
+  if (!config.hideExtractWindsurfKeyTool) {
+    const extractKeyTool = buildExtractWindsurfKeyTool({ deps });
+    server.tool(
+      extractKeyTool.name,
+      extractKeyTool.description,
+      extractKeyTool.schema,
+      extractKeyTool.handler,
+    );
+  }
 
   return server;
 }

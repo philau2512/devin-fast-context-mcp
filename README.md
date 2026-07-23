@@ -1,8 +1,9 @@
 # Fast Context MCP
 
-[English](./README.md) · [中文](./README_CN.md)
-
 AI-driven semantic code search as an MCP tool — powered by Windsurf's reverse-engineered SWE-grep protocol.
+
+Maintained fork: [philau2512/fast-context-mcp](https://github.com/philau2512/fast-context-mcp)  
+Upstream lineage: SammySnake / awei84 contributions (bootstrap hotspot, Devin auth, etc.)
 
 Any MCP-compatible client (Claude Code, Claude Desktop, Cursor, etc.) can use this to search codebases with natural language queries. All tools are bundled via npm — **no system-level dependencies** needed (ripgrep via `@vscode/ripgrep`, tree via Node.js `fs`). Works on macOS, Windows, and Linux.
 
@@ -39,48 +40,87 @@ Suggested search keywords:
 ## Prerequisites
 
 - **Node.js** >= 18
-- **Windsurf account** — free tier works (needed for API key)
+- **Windsurf / Devin account** — free tier works (needed for API key)
 
 No need to install ripgrep — it's bundled via `@vscode/ripgrep`.
 
 ## Installation
 
-### Option A: npm (recommended)
-
-Published on npm as two equivalent package names:
+### Option A: from GitHub (recommended for this fork)
 
 ```bash
-# pick either one — same package, same functionality
-npx fast-context-mcp
-# or
-npx fast-cxt-mcp
+# run latest from this repo (no global install)
+npx -y github:philau2512/fast-context-mcp
 ```
 
-No global install required. `npx` will pull the latest version automatically.
-
-### Option B: from source
+### Option B: clone from source
 
 ```bash
-git clone https://github.com/SammySnake-d/fast-context-mcp.git
+git clone https://github.com/philau2512/fast-context-mcp.git
 cd fast-context-mcp
 npm install
 ```
 
+### Option C: npm (after you publish)
+
+```bash
+npx -y fast-context-mcp
+# or: npm install -g fast-context-mcp
+```
+
 ## Setup
 
-### 1. Get Your Windsurf API Key
+### 1. Get Your Windsurf / Devin API Key
 
-The server auto-extracts the API key from your local Windsurf installation. You can also use the `extract_windsurf_key` MCP tool after setup, or set `WINDSURF_API_KEY` manually.
+The server auto-extracts the API key from your local Windsurf / Devin installation. You can also use the `extract_windsurf_key` MCP tool after setup, or set `WINDSURF_API_KEY` manually.
 
-Key is stored in Windsurf's local SQLite database:
+Lookup order:
+1. **Linux/WSL**: Devin CLI credentials at `~/.local/share/devin/credentials.toml` (run `devin login` if missing)
+2. Local SQLite DB candidates (**Windsurf** / **Devin** only)
 
-| Platform | Path |
-|----------|------|
-| macOS | `~/Library/Application Support/Windsurf/User/globalStorage/state.vscdb` |
-| Windows | `%APPDATA%/Windsurf/User/globalStorage/state.vscdb` |
-| Linux | `~/.config/Windsurf/User/globalStorage/state.vscdb` |
+| Platform | SQLite path candidates |
+|----------|------------------------|
+| macOS | `~/Library/Application Support/{Windsurf,Devin}/User/globalStorage/state.vscdb` |
+| Windows | `%APPDATA%/{Windsurf,Devin}/User/globalStorage/state.vscdb` |
+| Linux | `~/.config/{Windsurf,devin,Devin}/User/globalStorage/state.vscdb` |
+
+On WSL/Linux, if a Windows-extracted key returns **403**, run `devin login` inside WSL so `~/.local/share/devin/credentials.toml` exists, then retry.
 
 ### 2. Configure MCP Client
+
+#### Cursor
+
+Add to Cursor MCP settings (`mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "fast-context": {
+      "command": "npx",
+      "args": ["-y", "github:philau2512/fast-context-mcp"],
+      "env": {
+        "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL": "1"
+      }
+    }
+  }
+}
+```
+
+From a local clone (dev):
+
+```json
+{
+  "mcpServers": {
+    "fast-context": {
+      "command": "node",
+      "args": ["C:/path/to/fast-context-mcp/src/server.mjs"],
+      "env": {
+        "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL": "1"
+      }
+    }
+  }
+}
+```
 
 #### Claude Code
 
@@ -90,7 +130,7 @@ Add to `~/.claude.json` under `mcpServers`:
 {
   "fast-context": {
     "command": "npx",
-    "args": ["-y", "fast-context-mcp"],
+    "args": ["-y", "github:philau2512/fast-context-mcp"],
     "env": {
       "WINDSURF_API_KEY": "sk-ws-01-xxxxx"
     }
@@ -120,7 +160,7 @@ Add to `claude_desktop_config.json` under `mcpServers`:
 {
   "fast-context": {
     "command": "npx",
-    "args": ["-y", "fast-context-mcp"],
+    "args": ["-y", "github:philau2512/fast-context-mcp"],
     "env": {
       "WINDSURF_API_KEY": "sk-ws-01-xxxxx"
     }
@@ -128,7 +168,7 @@ Add to `claude_desktop_config.json` under `mcpServers`:
 }
 ```
 
-> If `WINDSURF_API_KEY` is omitted, the server auto-discovers it from your local Windsurf installation.
+> If `WINDSURF_API_KEY` is omitted, the server auto-discovers it from your local Windsurf / Devin installation.
 
 ## Environment Variables
 
@@ -138,6 +178,7 @@ Add to `claude_desktop_config.json` under `mcpServers`:
 | `FC_MAX_TURNS` | `3` | Search rounds per query (more = deeper but slower) |
 | `FC_MAX_COMMANDS` | `8` | Max parallel commands per round |
 | `FC_TIMEOUT_MS` | `30000` | Connect-Timeout-Ms for streaming requests |
+| `FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL` | `false` | Hide `extract_windsurf_key` from MCP tools when set to `1`/`true`/`yes`/`on` |
 | `FC_RESULT_MAX_LINES` | `50` | Max lines per command output (truncation) |
 | `FC_LINE_MAX_CHARS` | `250` | Max characters per output line (truncation) |
 | `FC_INCLUDE_SNIPPETS` | `false` | Default for returning code snippets with search results |
@@ -212,7 +253,9 @@ Error: Request failed: HTTP 413
 
 ### `extract_windsurf_key`
 
-Extract Windsurf API Key from local installation. No parameters.
+Extract Windsurf / Devin API Key from local installation (CLI credentials.toml on Linux/WSL, then SQLite DBs). No parameters.
+
+Set `FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL=1` at MCP server startup to hide this tool from `tools/list`. Internal auto-discovery for `fast_context_search` is unaffected.
 
 ## Project Structure
 

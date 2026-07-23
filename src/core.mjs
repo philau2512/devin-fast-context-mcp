@@ -2389,6 +2389,7 @@ export async function searchWithContent({
         errMsg += `\n[hint] Payload/timeout error. Try: reduce tree_depth, reduce max_turns, add exclude_paths, or narrow project_path to a subdirectory.`;
       } else if (meta.errorCode === "AUTH_ERROR") {
         errMsg += `\n[hint] Authentication error. The API key may be expired or revoked. Try re-extracting with extract_windsurf_key, or set a fresh WINDSURF_API_KEY.`;
+        errMsg += `\n[hint] On WSL/Linux, run \`devin login\` so ~/.local/share/devin/credentials.toml exists (Windows-extracted keys often return 403 inside WSL).`;
       } else if (meta.errorCode === "RATE_LIMITED") {
         errMsg += `\n[hint] Rate limited. Wait a moment and retry.`;
       } else {
