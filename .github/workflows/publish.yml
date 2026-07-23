@@ -1,5 +1,8 @@
 name: Publish to npm
 
+# Publishes @philau2512/fast-context-mcp (see package.json).
+# Requires npm Trusted Publishing / OIDC or NPM_TOKEN with 2FA as configured.
+
 on:
   release:
     types: [published]
@@ -28,6 +31,7 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+          scope: '@philau2512'
 
       - run: npm ci
 

@@ -1,33 +1,33 @@
-## AI 代码搜索工具协作策略
+## AI Code Search Collaboration Strategy
 
-**CRITICAL：回答任何代码相关问题前，必须先调用搜索工具定位代码。禁止猜测或凭经验假设代码位置。**
+**CRITICAL: Before answering any code-related question, call a search tool to locate the code first. Do not guess or assume file locations from habit.**
 
-### 工具优先级
+### Tool priority
 
-1. **已知函数名/类名** → `Grep`
-2. **理解业务逻辑 / 探索代码 / 查找实现** → `Augment search_context`（返回完整代码片段，语义理解强）
-3. **Augment 结果不足** → `Fast-Context`（返回文件路径+行号，附带 grep 关键词建议）
-4. **Fast-Context 返回 grep keywords** → 立即用 `Grep` 二次精确搜索
-5. **仍未找到** → 组合 Glob + Read + Grep
+1. **Known function/class name** → `Grep`
+2. **Business logic / code exploration / find implementations** → `Augment search_context` (returns full snippets, strong semantic match)
+3. **Augment not enough** → `Fast-Context` (paths + line ranges + suggested grep keywords)
+4. **Fast-Context returns grep keywords** → immediately run a second precise `Grep`
+5. **Still not found** → combine Glob + Read + Grep
 
-### Fast-Context 推荐参数
+### Recommended Fast-Context parameters
 
-`max_results: 8, max_turns: 2, tree_depth: 2`。结果不足时提高 `max_turns` 到 3、`tree_depth` 到 3。
+`max_results: 8, max_turns: 2, tree_depth: 2`. If results are thin, raise `max_turns` to 3 and `tree_depth` to 3.
 
-### 禁止行为
+### Do not
 
-- ❌ 猜测代码位置（"应该在 service/firmware 里"）
-- ❌ 跳过搜索直接回答（"根据框架惯例，应该是..."）
-- ❌ 遇到搜索就启动 Task/Explore 子代理（Augment + Fast-Context + Grep 组合优先）
+- Guess code locations (“it should be under service/firmware”)
+- Skip search and answer from framework conventions alone
+- Spin up Task/Explore subagents for every search (prefer Augment + Fast-Context + Grep)
 
-### 子代理使用条件
+### When subagents are OK
 
-仅当需要读取 10+ 文件交叉比对、或多轮搜索会撑爆上下文时，才启动子代理。
+Only when you need to cross-read 10+ files, or multi-round search would blow the context window.
 
-### npm 发布（optional）
+### Repo & publish (this package)
 
-Repo chính: https://github.com/philau2512/fast-context-mcp
-
-1. `npm version patch` (or keep package.json version)
-2. `npm publish --access public` (cần quyền tên package trên npm)
-3. Hoặc dùng GitHub trực tiếp: `npx -y github:philau2512/fast-context-mcp`
+- GitHub: https://github.com/philau2512/fast-context-mcp  
+- npm name: `@philau2512/fast-context-mcp`  
+- Publish: `npm publish --access public` (OTP/2FA required)  
+- Or run without npm: `npx -y github:philau2512/fast-context-mcp`  
+- Do **not** publish as bare `fast-context-mcp` (owned by another npm maintainer)

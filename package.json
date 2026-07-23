@@ -1,5 +1,5 @@
 {
-  "name": "fast-context-mcp",
+  "name": "@philau2512/fast-context-mcp",
   "version": "1.5.3",
   "description": "AI-driven semantic code search MCP server (Node.js) — Windsurf/Devin protocol",
   "type": "module",

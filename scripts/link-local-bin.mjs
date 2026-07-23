@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * 为源码仓库创建本地 bin 自链接。
+ * Create a local bin self-link for this source repo.
  *
- * npm/npx 在当前目录的 package 名称与请求包名相同时，会优先使用当前包。
- * 这种情况下不会像安装依赖那样自动生成 node_modules/.bin/fast-context-mcp，
- * 导致在本仓库根目录执行 `npx fast-context-mcp@x` 时出现 command not found。
+ * When the package name matches what npx resolves, npm may not create
+ * node_modules/.bin/fast-context-mcp automatically. That breaks local
+ * `npx @philau2512/fast-context-mcp` / bin resolution from the repo root.
  */
 
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";

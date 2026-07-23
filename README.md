@@ -2,8 +2,11 @@
 
 AI-driven semantic code search as an MCP tool — powered by Windsurf's reverse-engineered SWE-grep protocol.
 
-Maintained fork: [philau2512/fast-context-mcp](https://github.com/philau2512/fast-context-mcp)  
-Upstream lineage: SammySnake / awei84 contributions (bootstrap hotspot, Devin auth, etc.)
+**Repository:** [github.com/philau2512/fast-context-mcp](https://github.com/philau2512/fast-context-mcp)  
+**npm package:** `@philau2512/fast-context-mcp`  
+**CLI binary:** `fast-context-mcp`
+
+Based on the open-source Fast Context MCP lineage (SammySnake / awei84 and contributors), with continued maintenance here.
 
 Any MCP-compatible client (Claude Code, Claude Desktop, Cursor, etc.) can use this to search codebases with natural language queries. All tools are bundled via npm — **no system-level dependencies** needed (ripgrep via `@vscode/ripgrep`, tree via Node.js `fs`). Works on macOS, Windows, and Linux.
 
@@ -46,26 +49,28 @@ No need to install ripgrep — it's bundled via `@vscode/ripgrep`.
 
 ## Installation
 
-### Option A: from GitHub (recommended for this fork)
+### Option A: npm (after publish)
 
 ```bash
-# run latest from this repo (no global install)
+npx -y @philau2512/fast-context-mcp
+# or
+npm install -g @philau2512/fast-context-mcp
+```
+
+> Package name is **scoped** (`@philau2512/...`) so it does not conflict with the community `fast-context-mcp` package on npm.
+
+### Option B: from GitHub (no npm publish required)
+
+```bash
 npx -y github:philau2512/fast-context-mcp
 ```
 
-### Option B: clone from source
+### Option C: clone from source
 
 ```bash
 git clone https://github.com/philau2512/fast-context-mcp.git
 cd fast-context-mcp
 npm install
-```
-
-### Option C: npm (after you publish)
-
-```bash
-npx -y fast-context-mcp
-# or: npm install -g fast-context-mcp
 ```
 
 ## Setup
@@ -92,6 +97,25 @@ On WSL/Linux, if a Windows-extracted key returns **403**, run `devin login` insi
 
 Add to Cursor MCP settings (`mcp.json`):
 
+`WINDSURF_API_KEY` is **optional** if Devin / Windsurf is installed and logged in on this machine (auto-extract from local SQLite). Set it only when auto-discovery fails or you want a fixed key.
+
+```json
+{
+  "mcpServers": {
+    "fast-context": {
+      "command": "npx",
+      "args": ["-y", "@philau2512/fast-context-mcp"],
+      "env": {
+        "WINDSURF_API_KEY": "sk-ws-01-xxxxx",
+        "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL": "1"
+      }
+    }
+  }
+}
+```
+
+Before npm publish, use GitHub:
+
 ```json
 {
   "mcpServers": {
@@ -99,6 +123,7 @@ Add to Cursor MCP settings (`mcp.json`):
       "command": "npx",
       "args": ["-y", "github:philau2512/fast-context-mcp"],
       "env": {
+        "WINDSURF_API_KEY": "sk-ws-01-xxxxx",
         "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL": "1"
       }
     }
@@ -115,6 +140,7 @@ From a local clone (dev):
       "command": "node",
       "args": ["C:/path/to/fast-context-mcp/src/server.mjs"],
       "env": {
+        "WINDSURF_API_KEY": "sk-ws-01-xxxxx",
         "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL": "1"
       }
     }
@@ -124,15 +150,16 @@ From a local clone (dev):
 
 #### Claude Code
 
-Add to `~/.claude.json` under `mcpServers`:
+Add to `~/.claude.json` under `mcpServers` (same env rules as Cursor):
 
 ```json
 {
   "fast-context": {
     "command": "npx",
-    "args": ["-y", "github:philau2512/fast-context-mcp"],
+    "args": ["-y", "@philau2512/fast-context-mcp"],
     "env": {
-      "WINDSURF_API_KEY": "sk-ws-01-xxxxx"
+      "WINDSURF_API_KEY": "sk-ws-01-xxxxx",
+      "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL": "1"
     }
   }
 }
@@ -146,7 +173,8 @@ Or if installed from source:
     "command": "node",
     "args": ["/absolute/path/to/fast-context-mcp/src/server.mjs"],
     "env": {
-      "WINDSURF_API_KEY": "sk-ws-01-xxxxx"
+      "WINDSURF_API_KEY": "sk-ws-01-xxxxx",
+      "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL": "1"
     }
   }
 }
@@ -160,15 +188,16 @@ Add to `claude_desktop_config.json` under `mcpServers`:
 {
   "fast-context": {
     "command": "npx",
-    "args": ["-y", "github:philau2512/fast-context-mcp"],
+    "args": ["-y", "@philau2512/fast-context-mcp"],
     "env": {
-      "WINDSURF_API_KEY": "sk-ws-01-xxxxx"
+      "WINDSURF_API_KEY": "sk-ws-01-xxxxx",
+      "FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL": "1"
     }
   }
 }
 ```
 
-> If `WINDSURF_API_KEY` is omitted, the server auto-discovers it from your local Windsurf / Devin installation.
+> You can omit `WINDSURF_API_KEY` entirely when local Windsurf / Devin login works. You can omit `FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL` if you want the `extract_windsurf_key` tool visible.
 
 ## Environment Variables
 
@@ -261,13 +290,19 @@ Set `FC_HIDE_EXTRACT_WINDSURF_KEY_TOOL=1` at MCP server startup to hide this too
 
 ```
 fast-context-mcp/
-├── package.json
+├── package.json          # @philau2512/fast-context-mcp
 ├── src/
 │   ├── server.mjs        # MCP server entry point
 │   ├── core.mjs          # Auth, message building, streaming, search loop
+│   ├── directory-scorer.mjs
 │   ├── executor.mjs      # Tool executor: rg, readfile, tree, ls, glob
-│   ├── extract-key.mjs   # Windsurf API Key extraction (SQLite)
-│   └── protobuf.mjs      # Protobuf encoder/decoder + Connect-RPC frames
+│   ├── extract-key.mjs   # Windsurf / Devin API key extraction
+│   ├── project-path.mjs
+│   ├── protobuf.mjs      # Protobuf encoder/decoder + Connect-RPC frames
+│   └── tree.mjs
+├── scripts/
+│   └── link-local-bin.mjs
+├── tests/
 ├── README.md
 └── LICENSE
 ```
@@ -298,8 +333,15 @@ fast-context-mcp/
 |---------|---------|
 | `@modelcontextprotocol/sdk` | MCP server framework |
 | `@vscode/ripgrep` | Bundled ripgrep binary (cross-platform) |
-| `sql.js` | Read Windsurf's local SQLite DB |
+| `sql.js` | Read Windsurf / Devin local SQLite DB |
+| `scule` | String utilities |
 | `zod` | Schema validation (MCP SDK requirement) |
+
+## Publishing
+
+- **GitHub:** push to https://github.com/philau2512/fast-context-mcp  
+- **npm:** `npm publish --access public` (package `@philau2512/fast-context-mcp`; requires OTP/2FA)  
+- Bare name `fast-context-mcp` on npm is owned by another maintainer — do not publish under that name.
 
 ## License
 
