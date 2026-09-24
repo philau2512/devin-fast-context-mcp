@@ -2,9 +2,11 @@
 
 AI-driven semantic code search as an MCP tool — powered by Windsurf's reverse-engineered SWE-grep protocol.
 
-**Repository:** [github.com/philau2512/fast-context-mcp](https://github.com/philau2512/fast-context-mcp)  
-**npm package:** `@philau2512/fast-context-mcp`  
+**Repository:** [github.com/philau2512/devin-fast-context-mcp](https://github.com/philau2512/devin-fast-context-mcp)  
+**npm package:** `@philau2512/devin-fast-context-mcp`  
 **CLI binary:** `fast-context-mcp`
+
+Thank to: https://github.com/awei84/fast-context-mcp and https://github.com/SammySnake-d/fast-context-mcp
 
 Based on the open-source Fast Context MCP lineage (SammySnake / awei84 and contributors), with continued maintenance here.
 
