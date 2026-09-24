@@ -91,9 +91,14 @@ export function buildFastContextSearchTool({
   const runSearchWithContent = deps.searchWithContent || searchWithContent;
   const validatePath = deps.validateProjectPath || validateProjectPath;
   const description =
-    "AI-driven semantic code search using Windsurf's Devstral model. " +
-    "Searches a codebase with natural language and returns relevant file paths with line ranges, " +
-    "plus suggested grep keywords for follow-up searches.\n" +
+    "Fast semantic codebase search and context discovery. " +
+    "Locates relevant files, exact line ranges, and code regions from natural language descriptions in a single step, " +
+    "without needing manual grep trials or knowing exact filenames.\n\n" +
+    "Recommended for:\n" +
+    "- Finding feature implementations, business logic, and API flows (e.g. 'where is payment webhook handled', 'auth token refresh flow').\n" +
+    "- Exploring unfamiliar codebases or locating where conceptual logic lives.\n" +
+    "- Getting high-relevance entry points, line ranges, and suggested grep keywords before reading code.\n\n" +
+    "Use exact-match grep instead only when searching for a known, specific symbol name or literal string.\n\n" +
     "For best semantic search quality, write the query primarily in English; add local-language business terms only when needed.\n" +
     "Use tree_depth/max_turns/max_results for task-level tuning; use exclude_paths to reduce payload or noise.\n" +
     (config.includeSnippetsExplicitlySet
@@ -104,7 +109,10 @@ export function buildFastContextSearchTool({
 
   const schema = {
     query: z.string().describe(
-      'Natural language search query. English is recommended for best semantic matching; add local-language business terms when useful (e.g. "where is user login authentication and JWT validation handled 登录鉴权", "database connection pool")'
+      'Natural language search query describing the feature, logic, architecture, or behavior to locate. ' +
+      'English is recommended for best semantic matching; describe what the code does rather than guessing exact variable names ' +
+      '(e.g. "where is user login authentication and JWT validation handled", "database connection pool retry logic"). ' +
+      'Add local-language business terms only when needed.'
     ),
     project_path: projectPathSchema.describe(
       "Absolute path to project root directory (required). " +

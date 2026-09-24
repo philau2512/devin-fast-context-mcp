@@ -27,3 +27,4 @@ test_*.py
 # Old Node.js dev copy
 fast-context-mcp-node/
 .ace-tool/
+.tgrep/
