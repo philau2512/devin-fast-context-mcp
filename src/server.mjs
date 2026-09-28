@@ -91,16 +91,23 @@ export function buildFastContextSearchTool({
   const runSearchWithContent = deps.searchWithContent || searchWithContent;
   const validatePath = deps.validateProjectPath || validateProjectPath;
   const description =
-    "Fast semantic codebase search and context discovery. " +
-    "Locates relevant files, exact line ranges, and code regions from natural language descriptions in a single step, " +
+    "Primary tool for semantic codebase search, context discovery, and verifying logic existence. " +
+    "Locates relevant files, exact line ranges, and code regions from natural language or domain concepts in a single step, " +
     "without needing manual grep trials or knowing exact filenames.\n\n" +
-    "Recommended for:\n" +
-    "- Finding feature implementations, business logic, and API flows (e.g. 'where is payment webhook handled', 'auth token refresh flow').\n" +
-    "- Exploring unfamiliar codebases or locating where conceptual logic lives.\n" +
-    "- Getting high-relevance entry points, line ranges, and suggested grep keywords before reading code.\n\n" +
-    "Use exact-match grep instead only when searching for a known, specific symbol name or literal string.\n\n" +
-    "For best semantic search quality, write the query primarily in English; add local-language business terms only when needed.\n" +
-    "Use tree_depth/max_turns/max_results for task-level tuning; use exclude_paths to reduce payload or noise.\n" +
+    "MANDATORY REQUIREMENT:\n" +
+    "- 'project_path' is strictly REQUIRED. You MUST provide the absolute path to the project root directory when calling this tool.\n\n" +
+    "RECOMMENDED FOR:\n" +
+    "- Verifying feature/data existence: Checking whether a business rule, model, seed data, configuration, or API already exists (e.g. 'check if warrior coefficient seed data exists', 'has rate limiting been added').\n" +
+    "- Finding conceptual business logic: Locating where behavior lives across the codebase without guessing file names.\n" +
+    "- Tracing multi-file flows: Getting high-relevance entry points, line ranges, and suggested grep keywords before reading code.\n\n" +
+    "DO NOT USE WHEN (Avoid Overuse):\n" +
+    "- Target file is already known, opened, or specified by the user (use view_file / read_file directly).\n" +
+    "- Exact symbol search: Searching for an exact, known function/class/variable name (use grep instead).\n" +
+    "- Directory exploration: Simply listing files in a directory (use list_dir/glob instead).\n" +
+    "- Single-file localized edits or lint fixes.\n\n" +
+    "QUERY TIPS:\n" +
+    "- For best semantic search quality, write the query primarily in English; keep local-language domain terms when needed (e.g. 'seed data for sale he so chien binh').\n" +
+    "- Use tree_depth/max_turns/max_results for task-level tuning; use exclude_paths to reduce payload or noise.\n" +
     (config.includeSnippetsExplicitlySet
       ? `- include_code_snippets: Server-configured default is ${config.includeSnippets}. Do NOT override unless explicitly asked by the user.\n`
       : "- include_code_snippets: Default false (lightweight mode, ~2-5KB output). " +
@@ -115,8 +122,9 @@ export function buildFastContextSearchTool({
       'Add local-language business terms only when needed.'
     ),
     project_path: projectPathSchema.describe(
-      "Absolute path to project root directory (required). " +
-      "Example: /Users/username/projects/myproject or C:/Users/username/projects/myproject"
+      "MANDATORY: Absolute path to project root directory (required). " +
+      "You MUST supply this parameter explicitly on every call (e.g. /Users/username/projects/myproject or C:/Users/username/projects/myproject). " +
+      "Never leave empty or omit."
     ),
     tree_depth: z
       .number()
