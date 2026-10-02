@@ -1,61 +1,70 @@
 import { statSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { homedir } from "node:os";
+import { isAbsolute, normalize } from "node:path";
 import { z } from "zod";
 
 export const PROJECT_PATH_REQUIRED_MESSAGE =
-  "project_path is optional. Pass the absolute or relative path to the project root directory, or omit to use current working directory.";
+  "project_path is required. Pass the absolute path to the project root directory.";
 
 export const projectPathSchema = z
   .string()
   .trim()
-  .nullish()
-  .transform((val) => val ?? "")
-  .default("");
+  .min(1, PROJECT_PATH_REQUIRED_MESSAGE);
 
 /**
- * Resolve project path to an absolute path.
- * If empty, null, or ".", defaults to cwd (process.cwd()).
- * If relative, resolves against cwd.
- *
- * @param {string|null|undefined} projectPath
- * @param {string} [cwd]
- * @returns {string}
+ * Check if a path points to the user's home directory or system root.
+ * @param {string} p
+ * @returns {boolean}
  */
-export function resolveProjectPath(projectPath, cwd = process.cwd()) {
-  const trimmed = typeof projectPath === "string" ? projectPath.trim() : "";
-  if (!trimmed || trimmed === "." || trimmed === "./" || trimmed === ".\\") {
-    return cwd;
+export function isHomeOrRootDir(p) {
+  if (!p || typeof p !== "string") return false;
+  const trimmed = p.trim();
+  if (trimmed === "/" || trimmed === "\\" || /^[a-zA-Z]:[\\/]*$/.test(trimmed)) {
+    return true;
   }
-  if (isAbsolute(trimmed)) {
-    return trimmed;
+  const norm = normalize(trimmed).replace(/[\\/]+$/, "");
+  const home = normalize(homedir()).replace(/[\\/]+$/, "");
+  if (norm.toLowerCase() === home.toLowerCase()) {
+    return true;
   }
-  return resolve(cwd, trimmed);
+  if (/^[a-zA-Z]:$/.test(norm) || norm === "" || norm === "/" || norm === "\\") {
+    return true;
+  }
+  return false;
 }
 
 /**
  * Validate the project root path provided to fast_context_search.
- * Automatically resolves relative paths or empty/omitted paths against cwd.
  * Returns null when valid, otherwise an MCP-friendly error string.
  *
  * @param {string} projectPath
  * @param {(path: string) => import("node:fs").Stats} [statFn]
- * @param {string} [cwd]
  * @returns {string|null}
  */
-export function validateProjectPath(projectPath, statFn = statSync, cwd = process.cwd()) {
-  const resolved = resolveProjectPath(projectPath, cwd);
+export function validateProjectPath(projectPath, statFn = statSync) {
+  if (!projectPath) {
+    return `Error: ${PROJECT_PATH_REQUIRED_MESSAGE}`;
+  }
+
+  if (!isAbsolute(projectPath)) {
+    return `Error: project_path must be an absolute path, got: ${projectPath}`;
+  }
+
+  if (isHomeOrRootDir(projectPath)) {
+    return `Error: project_path cannot be the user home directory or system root: ${projectPath}. Please provide the specific workspace path (e.g. 'C:/PROJECTS/my-app').`;
+  }
 
   try {
-    const st = statFn(resolved);
+    const st = statFn(projectPath);
     if (!st.isDirectory()) {
-      return `Error: project_path is not a directory: ${resolved}`;
+      return `Error: project_path is not a directory: ${projectPath}`;
     }
   } catch (error) {
     if (error?.code === "ENOENT") {
-      return `Error: project_path does not exist: ${resolved}`;
+      return `Error: project_path does not exist: ${projectPath}`;
     }
     if (error?.code === "EACCES" || error?.code === "EPERM") {
-      return `Error: cannot access project_path (${error.code}): ${resolved}`;
+      return `Error: cannot access project_path (${error.code}): ${projectPath}`;
     }
     const reason = error?.message ? `${error.code || "UNKNOWN"}: ${error.message}` : String(error);
     return `Error: failed to validate project_path: ${reason}`;

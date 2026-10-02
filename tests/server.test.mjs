@@ -216,31 +216,4 @@ describe("fast_context_search handler", () => {
     assert.equal(searchCalled, false);
     assert.deepEqual(response, { content: [{ type: "text", text: "bad project_path" }] });
   });
-
-  it("defaults project_path to process.cwd() when omitted or empty", async () => {
-    let capturedArgs = null;
-    const tool = buildFastContextSearchTool({
-      config: readRuntimeConfig({}),
-      deps: {
-        validateProjectPath: () => null,
-        searchWithContent: async (args) => {
-          capturedArgs = args;
-          return "ok";
-        },
-      },
-    });
-
-    const response = await tool.handler({
-      query: "find user service",
-      project_path: "",
-      tree_depth: 1,
-      max_turns: 1,
-      max_results: 5,
-      exclude_paths: [],
-      include_code_snippets: false,
-    });
-
-    assert.deepEqual(response, { content: [{ type: "text", text: "ok" }] });
-    assert.equal(capturedArgs.projectRoot, process.cwd());
-  });
 });
