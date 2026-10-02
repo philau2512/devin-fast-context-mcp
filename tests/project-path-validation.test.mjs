@@ -1,35 +1,43 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  PROJECT_PATH_REQUIRED_MESSAGE,
   projectPathSchema,
+  resolveProjectPath,
   validateProjectPath,
 } from "../src/project-path.mjs";
 
 describe("project_path schema validation", () => {
-  it("rejects empty string", () => {
+  it("accepts empty string and defaults to empty", () => {
     const result = projectPathSchema.safeParse("");
-    assert.equal(result.success, false, "empty string should be rejected");
+    assert.equal(result.success, true);
+    assert.equal(result.data, "");
   });
 
-  it("rejects whitespace-only string", () => {
+  it("accepts undefined and defaults to empty", () => {
+    const result = projectPathSchema.safeParse(undefined);
+    assert.equal(result.success, true);
+    assert.equal(result.data, "");
+  });
+
+  it("accepts null and defaults to empty", () => {
+    const result = projectPathSchema.safeParse(null);
+    assert.equal(result.success, true);
+    assert.equal(result.data, "");
+  });
+
+  it("accepts whitespace-only string and trims to empty", () => {
     const result = projectPathSchema.safeParse("   ");
-    assert.equal(result.success, false, "whitespace-only should be rejected (trim + min(1))");
-  });
-
-  it("returns the shared required message", () => {
-    const result = projectPathSchema.safeParse("");
-    assert.equal(result.success, false);
-    assert.equal(result.error.issues[0]?.message, PROJECT_PATH_REQUIRED_MESSAGE);
+    assert.equal(result.success, true);
+    assert.equal(result.data, "");
   });
 
   it("accepts non-empty string", () => {
     const result = projectPathSchema.safeParse("/some/path");
-    assert.equal(result.success, true, "non-empty path should be accepted at schema level");
+    assert.equal(result.success, true);
     assert.equal(result.data, "/some/path");
   });
 
@@ -38,31 +46,58 @@ describe("project_path schema validation", () => {
     assert.equal(result.success, true);
     assert.equal(result.data, "/some/path", "should trim whitespace");
   });
+
+  it("accepts relative path", () => {
+    const result = projectPathSchema.safeParse("./src");
+    assert.equal(result.success, true);
+    assert.equal(result.data, "./src");
+  });
+});
+
+describe("resolveProjectPath", () => {
+  it("defaults empty, null, undefined, or dot to cwd", () => {
+    const cwd = "/fake/workspace/root";
+    assert.equal(resolveProjectPath("", cwd), cwd);
+    assert.equal(resolveProjectPath(null, cwd), cwd);
+    assert.equal(resolveProjectPath(undefined, cwd), cwd);
+    assert.equal(resolveProjectPath("  ", cwd), cwd);
+    assert.equal(resolveProjectPath(".", cwd), cwd);
+    assert.equal(resolveProjectPath("./", cwd), cwd);
+  });
+
+  it("returns absolute path as-is", () => {
+    const cwd = "/fake/workspace/root";
+    const absPath = join(tmpdir(), "fc-abs-path");
+    assert.equal(resolveProjectPath(absPath, cwd), absPath);
+  });
+
+  it("resolves relative path against cwd", () => {
+    const cwd = join(tmpdir(), "fc-workspace");
+    const resolved = resolveProjectPath("packages/server", cwd);
+    assert.equal(resolved, join(cwd, "packages/server"));
+  });
 });
 
 describe("project_path runtime validation", () => {
-  it("rejects empty project_path", () => {
-    const err = validateProjectPath("");
-    assert.ok(err, "empty path should return an error");
-    assert.match(err, /required/i);
+  it("accepts empty project_path by resolving to valid cwd", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "fc-test-cwd-"));
+    const err = validateProjectPath("", undefined, tempDir);
+    assert.equal(err, null, "empty path resolving to valid cwd directory should pass");
   });
 
-  it("rejects null project_path", () => {
-    const err = validateProjectPath(null);
-    assert.ok(err, "null path should return an error");
-    assert.match(err, /required/i);
+  it("accepts null project_path by resolving to valid cwd", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "fc-test-cwd-"));
+    const err = validateProjectPath(null, undefined, tempDir);
+    assert.equal(err, null, "null path resolving to valid cwd directory should pass");
   });
 
-  it("rejects relative path", () => {
-    const err = validateProjectPath("./src");
-    assert.ok(err, "relative path should return an error");
-    assert.match(err, /absolute/i);
-  });
+  it("accepts relative path that exists under cwd", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "fc-test-cwd-"));
+    const subDir = join(tempDir, "src");
+    mkdirSync(subDir);
 
-  it("rejects bare directory name", () => {
-    const err = validateProjectPath("my-project");
-    assert.ok(err, "bare name should return an error");
-    assert.match(err, /absolute/i);
+    const err = validateProjectPath("./src", undefined, tempDir);
+    assert.equal(err, null, "valid relative directory under cwd should pass validation");
   });
 
   it("rejects non-existent absolute path", () => {
@@ -71,8 +106,14 @@ describe("project_path runtime validation", () => {
     assert.match(err, /does not exist/i);
   });
 
+  it("rejects relative path that does not exist under cwd", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "fc-test-cwd-"));
+    const err = validateProjectPath("nonexistent-subdir", undefined, tempDir);
+    assert.ok(err, "non-existent relative path should return an error");
+    assert.match(err, /does not exist/i);
+  });
+
   it("rejects path to a file (not directory)", () => {
-    // Create a temp file
     const tempDir = mkdtempSync(join(tmpdir(), "fc-test-"));
     const tempFile = join(tempDir, "not-a-dir.txt");
     writeFileSync(tempFile, "test");

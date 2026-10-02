@@ -22,7 +22,11 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import { searchWithContent, extractKeyInfo } from "./core.mjs";
-import { projectPathSchema, validateProjectPath } from "./project-path.mjs";
+import {
+  projectPathSchema,
+  resolveProjectPath,
+  validateProjectPath,
+} from "./project-path.mjs";
 
 const PACKAGE_JSON = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 export const SERVER_VERSION = PACKAGE_JSON.version;
@@ -122,9 +126,9 @@ export function buildFastContextSearchTool({
       'Add local-language business terms only when needed.'
     ),
     project_path: projectPathSchema.describe(
-      "MANDATORY: Absolute path to project root directory (required). " +
-      "You MUST supply this parameter explicitly on every call (e.g. /Users/username/projects/myproject or C:/Users/username/projects/myproject). " +
-      "Never leave empty or omit."
+      "Optional path to project root directory (absolute or relative). " +
+      "Defaults to current workspace directory if omitted. " +
+      "Example: /Users/username/projects/myproject or C:/Users/username/projects/myproject or ."
     ),
     tree_depth: z
       .number()
@@ -192,7 +196,7 @@ export function buildFastContextSearchTool({
     exclude_paths,
     include_code_snippets,
   }) => {
-    const projectPath = project_path;
+    const projectPath = resolveProjectPath(project_path);
     const validationError = validatePath(projectPath);
     if (validationError) {
       return { content: [{ type: "text", text: validationError }] };
